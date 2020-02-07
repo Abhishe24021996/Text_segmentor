@@ -1,2 +1,15 @@
 .ipynb_checkpoints
 sentences.csv
+glove.6B.50d.txt
+glove.6B.100d.txt
+glove.6B.200d.txt
+glove.6B.300d.txt
+train.txt
+test.txt
+dev.txt
+vocab.txt
+tags.txt
+tag.txt
+28_01_2020_NewData.txt
+tags_embeddings.npz
+vocab_embeddings.npz
