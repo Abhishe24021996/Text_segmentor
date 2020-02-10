@@ -1,0 +1,7 @@
+https://github.com/bedapudi6788/deepsegment.git contib
+>>no char embed 
+with out punctuations and normal syntax ----- 91% 
+with using punctuation(prob=0.25) ------ 85%
+with using punctuation(prob=0.25) 
+
+>>with char embed
