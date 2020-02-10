@@ -29,3 +29,5 @@ tags_embeddings.npz
 vocab_embeddings.npz
 modal_folder
 04_02_2020_NewData.txt
+tag_embeddings.npz
+data_folder.char.txt
