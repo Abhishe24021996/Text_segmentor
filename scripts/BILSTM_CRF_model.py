@@ -1,7 +1,8 @@
-import os
 import numpy as np
 import tensorflow as tf
 from .base_model import BaseModel
+from .data_utils import minibatches, get_chunks
+
 
 class BILSTM_CRF(BaseModel):
     def __init__(self,config):
@@ -25,7 +26,7 @@ class BILSTM_CRF(BaseModel):
                                                   dtype=tf.float32,
                                                   shape=[self.config.nwords,self.config.word_dim])
             else:
-                word_embeddings_ = tf.Variable(embedding_dict,
+                word_embeddings_ = tf.Variable(self.config.word_embeddings,
                                                name="word_embeddings_",
                                                dtype=tf.float32,
                                                shape=[self.config.nwords,self.config.word_dim],
@@ -35,7 +36,7 @@ class BILSTM_CRF(BaseModel):
         
         with tf.variable_scope("char"):
             print('using char embedding')
-            if self.use_chars:
+            if self.config.use_chars:
                 char_embeddings_ = tf.Variable(tf.random_uniform([self.config.nchars,self.config.char_dim],-1.0,1.0),
                                                 name="_char_embeddings",
                                                 dtype=tf.float32)
@@ -49,8 +50,8 @@ class BILSTM_CRF(BaseModel):
                                             shape=[s[0]*s[1],s[-2],50])
                 word_length = tf.reshape(self.word_lengths,shape=[s[0]*s[1]])
                 #lstm bidir over chars
-                fw_cell = tf.contrib.rnn.LSTMCell(self.config.char_hidden_size, state_is_tuple=True)
-                bw_cell = tf.contrib.rnn.LSTMCell(self.config.char_hidden_size, state_is_tuple=True)
+                fw_cell = tf.contrib.rnn.LSTMCell(self.config.char_hidden_dim, state_is_tuple=True)
+                bw_cell = tf.contrib.rnn.LSTMCell(self.config.char_hidden_dim, state_is_tuple=True)
                 
                 output_ = tf.nn.bidirectional_dynamic_rnn(fw_cell,bw_cell, char_embeddings,
                                                          sequence_length = word_length, dtype=tf.float32)
@@ -58,10 +59,10 @@ class BILSTM_CRF(BaseModel):
                 _, ((_,fw_output),(_,bw_output)) = output_
                 output = tf.concat([fw_output,bw_output],axis=-1)
                 #shape [bs, max_sequnce_length, char_hidden_size]
-                output = tf.reshape(output,shape=[s[0],s[1],2*self.config.char_hidden_size])
+                output = tf.reshape(output,shape=[s[0],s[1],2*self.config.char_hidden_dim])
                 self.word_embeddings = tf.concat([self.word_embeddings, output],axis=-1)
         if self.config.dropout:
-            self.config.word_embeddings = tf.nn.dropout(self.config.word_embeddings, self.config.dropout)
+            self.word_embeddings = tf.nn.dropout(self.word_embeddings, self.config.dropout)
     
     def logits_op(self):
         with tf.variable_scope("bidirectional_lstm"):
@@ -97,11 +98,11 @@ class BILSTM_CRF(BaseModel):
     def loss_op(self):
         if self.config.use_crf:
             log_likelihood, trans_params = tf.contrib.crf.crf_log_likelihood(
-                                            self.logits, self.labels, self.sequence_length)
+                                            self.logits, self.label, self.sequence_length)
             self.trans_params = trans_params
             self.loss =tf.reduce_mean(-log_likelihood)
         else:
-            losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits,labels=self.labels)
+            losses = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits,labels=self.label)
             mask = tf.sequence_mask(self.sequence_length)
             losses = tf.boolean_mask(losses, mask)
             self.loss = tf.reduce_mean(losses)
@@ -111,11 +112,11 @@ class BILSTM_CRF(BaseModel):
         
     def build(self):
         # NER specific functions
-        self.add_placeholders()
-        self.add_word_embeddings_op()
-        self.add_logits_op()
-        self.add_pred_op()
-        self.add_loss_op()
+        self.add_placeholder()
+        self.word_embedding_fn()
+        self.logits_op()
+        self.pred_op()
+        self.loss_op()
 
         # Generic functions that add training op and initialize session
         self.add_train_op(self.config.lr_method, self.lr, self.loss,

@@ -1,8 +1,27 @@
 import os
+import random
+import string
+import re
 import numpy as np
+from tqdm import tqdm
 
 UNK = "$UNK$"
 NUM = "$NUM$"
+NONE = "O"
+
+def prepare_tag_data(filename):
+    eng_lines = []
+    with open(filename,'r',encoding='utf-8') as f:
+        for line in f:
+            line = line.strip().replace('<s>','').replace('</t>','').split('</s> <t>')
+            line = line[0].strip()
+            line = re.sub('\s+',' ',line)
+            eng_lines.append(line)
+    return eng_lines
+
+def tuple_data(words,labels):
+    data = [(i,j) for i, j in zip(words,labels)]
+    return data
 
 def get_vocabs(datasets):
     """Building vocabs present in datasets"""
@@ -64,6 +83,8 @@ def load_vocab(filename):
             word = word.strip()
             d[word] = idx
     return d
+
+
 
 
 
@@ -278,10 +299,207 @@ def bad_sentence_generator(sent, remove_punctuation = None,use_punct=None):
     return sent
 
 
+#minibatches of data
+def minibatches(data,batch_size):
+    x_batch, y_batch = [], []
+    for (x,y) in data:
+        if len(x_batch) == batch_size:
+            yield x_batch, y_batch
+            x_batch, y_batch = [], []
+        if type(x[0]) == tuple:
+            x = zip(*x)
+        x_batch += [x]
+        y_batch += [y]
+        
+    if len(x_batch) != 0:
+        yield x_batch, y_batch
+        
+def get_chunk_type(tok, idx_to_tag):
+    """
+    Args:
+        tok: id of token, ex 4
+        idx_to_tag: dictionary {4: "B-PER", ...}
+    Returns:
+        tuple: "B", "PER"
+    """
+    tag_name = idx_to_tag[tok]
+    tag_class = tag_name.split('-')[0]
+    tag_type = tag_name.split('-')[-1]
+    return tag_class, tag_type
+
+
+def get_chunks(seq, tags):
+    """Given a sequence of tags, group entities and their position
+    Args:
+        seq: [4, 4, 0, 0, ...] sequence of labels
+        tags: dict["O"] = 4
+    Returns:
+        list of (chunk_type, chunk_start, chunk_end)
+    Example:
+        seq = [4, 5, 0, 3]
+        tags = {"B-PER": 4, "I-PER": 5, "B-LOC": 3}
+        result = [("PER", 0, 2), ("LOC", 3, 4)]
+    """
+    if NONE in tags:
+        default = tags[NONE]
+    else:
+        default = None
+        
+    idx_to_tag = {idx: tag for tag, idx in tags.items()}
+    chunks = []
+    chunk_type, chunk_start = None, None
+    for i, tok in enumerate(seq):
+        # End of a chunk 1
+#         print(tok)
+        if tok == default and chunk_type is not None:
+            # Add a chunk.
+            chunk = (chunk_type, chunk_start, i)
+            chunks.append(chunk)
+            chunk_type, chunk_start = None, None
+
+        # End of a chunk + start of a chunk!
+        elif tok != default:
+            tok_chunk_class, tok_chunk_type = get_chunk_type(tok, idx_to_tag)
+            if chunk_type is None:
+                chunk_type, chunk_start = tok_chunk_type, i
+            elif tok_chunk_type != chunk_type or tok_chunk_class == "B":
+                chunk = (chunk_type, chunk_start, i)
+                chunks.append(chunk)
+                chunk_type, chunk_start = tok_chunk_type, i
+        else:
+            pass
+
+    # end condition
+    if chunk_type is not None:
+        chunk = (chunk_type, chunk_start, len(seq))
+        chunks.append(chunk)
+
+    return chunks
+
+
+def _pad_sequences(sequences, pad_tok, max_length):
+    """
+    Args:
+        sequences: a generator of list or tuple
+        pad_tok: the char to pad with
+    Returns:
+        a list of list where each sublist has same length
+    """
+    sequence_padded, sequence_length = [], []
+
+    for seq in sequences:
+        seq = list(seq)
+        seq_ = seq[:max_length] + [pad_tok]*max(max_length - len(seq), 0)
+        sequence_padded +=  [seq_]
+        sequence_length += [min(len(seq), max_length)]
+
+    return sequence_padded, sequence_length
+
+
+def pad_sequences(sequences, pad_tok, nlevels=1):
+    """
+    Args:
+        sequences: a generator of list or tuple
+        pad_tok: the char to pad with
+        nlevels: "depth" of padding, for the case where we have characters ids
+    Returns:
+        a list of list where each sublist has same length
+    """
+    if nlevels == 1:
+        max_length = max(map(lambda x : len(x), sequences))
+        sequence_padded, sequence_length = _pad_sequences(sequences,
+                                            pad_tok, max_length)
+
+    elif nlevels == 2:
+        max_length_word = max([max(map(lambda x: len(x), seq))
+                               for seq in sequences])
+        sequence_padded, sequence_length = [], []
+        for seq in sequences:
+            # all words are same length now
+            sp, sl = _pad_sequences(seq, pad_tok, max_length_word)
+            sequence_padded += [sp]
+            sequence_length += [sl]
+
+        max_length_sentence = max(map(lambda x : len(x), sequences))
+        sequence_padded, _ = _pad_sequences(sequence_padded,
+                [pad_tok]*max_length_word, max_length_sentence)
+        sequence_length, _ = _pad_sequences(sequence_length, 0,
+                max_length_sentence)
+
+    return sequence_padded, sequence_length
+
 def data_builder(config):
     """build all the data files vocab, char, tag, embeddings"""
+    data = prepare_tag_data(config.data_path)
+    train_length = int(0.7*len(data))
+    test_length = len(data)-train_length
+    
+    x, y = generate_data(lines=data[:train_length],max_sents_per_example=6,n_examples=56000,punct=config.punct)
+    x_, y_ = generate_data(lines=data[:test_length],max_sents_per_example=6,n_examples=24000,punct=config.punct)
+
+    config.train = tuple_data(words=x,labels=y)
+    config.test = tuple_data(words=x,labels=y)
+    
     process_word = get_processing_word(lowercase=True)
     
-    #data genrators
-    data = CoNLLDataset(data = data)
+     # Generators
+    test  = CoNLLDataset(data=config.train, processing_word=process_word)
+    train = CoNLLDataset(data=config.test, processing_word=process_word)
     
+    # Build Word and Tag vocab
+    vocab_words, vocab_tags = get_vocabs([train, test])
+    vocab_glove = get_glove_vocab(config.glove_path)
+
+    vocab = vocab_words & vocab_glove
+    vocab.add(UNK)
+    vocab.add(NUM)
+
+    # Save vocab
+    build_vocab(vocab, config.vocab_filename)
+    build_vocab(vocab_tags, config.tag_filename)
+
+    # Trim GloVe Vectors
+    vocab = load_vocab(config.vocab_filename)
+    export_glove_vectors(vocab, config.glove_path,
+                                config.vocab_embedding_filename, config.word_dim)
+
+    # Build and save char vocab
+    train = CoNLLDataset(data=train)
+    vocab_chars = get_char_vocab(train)
+    build_vocab(vocab_chars, config.char_filename)
+    
+    
+    
+# =============================================================================
+#  s = print("""{:12}  |  {:12}
+#  {:12}  |  {:12}""".format("abc","absfs","sfasf","Sfasf"))   
+# # =============================================================================
+# #     
+# # from tabulate import tabulate
+# # a = set(['a','b'])
+# =============================================================================
+# b = set(['b','c'])
+# c = a & b
+# x
+# =============================================================================
+# =============================================================================
+# 
+# data1 = ["abcss","asacs","asas","aabc","aaaacs","as"]
+# def print_table(data, cols=6, wide=12):
+#     '''Prints formatted data on columns of given width.'''
+#     n, r = divmod(len(data), cols)
+#     pat = '{{:{}}}'.format(wide)
+#     line = '\n'.join(pat * cols for _ in range(n))
+#     last_line = pat * r
+#     print(line.format(*data))
+#     print(line.format(*data1))
+#     print(last_line.format(*data[n*cols:]))
+# 
+# data = [str(i) for i in range(27)]
+# print_table(data, 6, 12)
+# 
+# 
+# print('%6s%6s'%("as","bs"))
+# print('%6s%6s'%("asass","bsss"))
+# 
+# =============================================================================

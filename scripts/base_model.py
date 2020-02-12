@@ -14,7 +14,7 @@ class BaseModel(object):
 
         """
         self.config = config
-        self.logger = config.logger
+        #self.logger = config.logger
         self.sess   = None
         self.saver  = None
 
@@ -60,7 +60,7 @@ class BaseModel(object):
 
     def initialize_session(self):
         """Defines self.sess and initialize the variables"""
-        self.logger.info("Initializing tf session")
+        #self.logger.info("Initializing tf session")
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
         self.saver = tf.train.Saver()
@@ -74,7 +74,7 @@ class BaseModel(object):
             dir_model: dir with weights
 
         """
-        self.logger.info("Reloading the latest trained model...")
+        #self.logger.info("Reloading the latest trained model...")
         self.saver.restore(self.sess, dir_model)
 
 
@@ -98,7 +98,7 @@ class BaseModel(object):
 
         """
         self.merged      = tf.summary.merge_all()
-        self.file_writer = tf.summary.FileWriter(self.config.dir_output,
+        self.file_writer = tf.summary.FileWriter(self.config.model_path,
                 self.sess.graph)
 
 
@@ -115,8 +115,8 @@ class BaseModel(object):
         self.add_summary() # tensorboard
 
         for epoch in range(self.config.nepochs):
-            self.logger.info("Epoch {:} out of {:}".format(epoch + 1,
-                        self.config.nepochs))
+            #self.logger.info("Epoch {:} out of {:}".format(epoch + 1,
+                        #self.config.nepochs))
 
             score = self.run_epoch(train, dev, epoch)
             self.config.lr *= self.config.lr_decay # decay learning rate
@@ -126,12 +126,12 @@ class BaseModel(object):
                 nepoch_no_imprv = 0
                 self.save_session()
                 best_score = score
-                self.logger.info("- new best score!")
+                #self.logger.info("- new best score!")
             else:
                 nepoch_no_imprv += 1
                 if nepoch_no_imprv >= self.config.nepoch_no_imprv:
-                    self.logger.info("- early stopping {} epochs without "\
-                            "improvement".format(nepoch_no_imprv))
+                    #self.logger.info("- early stopping {} epochs without "\
+                            #"improvement".format(nepoch_no_imprv))
                     break
 
 
@@ -142,8 +142,9 @@ class BaseModel(object):
             test: instance of class Dataset
 
         """
-        self.logger.info("Testing model over test set")
+        #self.logger.info("Testing model over test set")
         metrics = self.run_evaluate(test)
         msg = " - ".join(["{} {:04.2f}".format(k, v)
                 for k, v in metrics.items()])
-        self.logger.info(msg)
+        print(msg)
+        #self.logger.info(msg)

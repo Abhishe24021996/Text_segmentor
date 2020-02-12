@@ -1,0 +1,13 @@
+{
+	"nepochs": 15,
+	"batch_size": 32,
+	"dropout": 0.2,
+	"epochs_no_improvement": 3,
+	"use_chars": 1,
+	"use_crf":1,
+	"hidden_dim":256,
+	"char_hidden_dim":100,
+	"word_dim":100,
+	"char_dim":50,
+	"data_filename":"10_02_2020_OnlySyntax.txt"
+}

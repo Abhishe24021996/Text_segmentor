@@ -2,9 +2,9 @@ import os
 import sys
 import json
 
-from data_utils import data_builder, CoNLLDataset
-from BILSTM_CRF_model import BILSTM_CRF
-from config import config
+from scripts.data_utils import data_builder, CoNLLDataset
+from scripts.BILSTM_CRF_model import BILSTM_CRF
+from scripts.config import config
 
 
 def train(config_path,continue_training=False):
@@ -12,12 +12,14 @@ def train(config_path,continue_training=False):
     config_params = json.load(open(config_path))
     
     #loading hyperparams
-    config_data = config(**config_params, load=False)
+    config_train = config(**config_params, load=False)
     #Creating data vocab.txt, chars.txt, tags.txt, and embeddings
-    data_builder(config_data)
+    data_builder(config_train)
     
     #creating loading the data created earlier
-    config_train = config(**config_params,load=True)
+    # config_train = config(**config_params,load=True)
+    config_train.load = True
+    config_train.loads()
     
     #build model
     model = BILSTM_CRF(config_train)
