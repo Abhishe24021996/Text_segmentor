@@ -18,6 +18,46 @@ class BILSTM_CRF(BaseModel):
         self.lr = tf.placeholder(dtype=tf.float32, shape=[], name="lr")
         self.char_id = tf.placeholder(dtype=tf.int32, shape=[None,None,None], name="char_id")
         self.word_lengths = tf.placeholder(dtype=tf.int32, shape=[None,None], name="word_length_placeholder")
+
+    def get_feed_dict(words, labels=None, lr=None, dropout=None):
+        """Given some data, pad it and build a feed dictionary
+        Args:
+            words: list of sentences. A sentence is a list of ids of a list of
+                words. A word is a list of ids
+            labels: list of ids
+            lr: (float) learning rate
+            dropout: (float) keep prob
+        Returns:
+            dict {placeholder: value}
+        """
+        #perform padding of the given data
+        if self.config.use_chars:
+            char_ids, word_ids = zip(*words)
+            word_ids, sequence_lengths = pad_sequences(word_ids, 0)
+            char_ids, word_lengths = pad_sequences(char_ids, pad_tok=0,
+                nlevels=2)
+        else:
+            word_ids, sequence_lengths = pad_sequences(words, 0)
+
+        # build feed dictionary
+        feed = {
+            self.word_ids: word_ids,
+            self.sequence_length: sequence_lengths
+        }
+
+        if self.config.use_chars:
+            feed[self.char_id] = char_ids
+            feed[self.word_lengths] = word_lengths
+        if labels is not None:
+            labels, _ = pad_sequences(labels, 0)
+            feed[self.label] = labels
+
+        if lr is not None:
+            feed[self.lr] = lr
+
+        if dropout is not None:
+            feed[self.dropout] = dropout
+
         
     def word_embedding_fn(self):
         with tf.variable_scope("word_embedding"):

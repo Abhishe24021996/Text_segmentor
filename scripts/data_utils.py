@@ -467,39 +467,8 @@ def data_builder(config):
     train = CoNLLDataset(data=train)
     vocab_chars = get_char_vocab(train)
     build_vocab(vocab_chars, config.char_filename)
+
+
+
+
     
-    
-    
-# =============================================================================
-#  s = print("""{:12}  |  {:12}
-#  {:12}  |  {:12}""".format("abc","absfs","sfasf","Sfasf"))   
-# # =============================================================================
-# #     
-# # from tabulate import tabulate
-# # a = set(['a','b'])
-# =============================================================================
-# b = set(['b','c'])
-# c = a & b
-# x
-# =============================================================================
-# =============================================================================
-# 
-# data1 = ["abcss","asacs","asas","aabc","aaaacs","as"]
-# def print_table(data, cols=6, wide=12):
-#     '''Prints formatted data on columns of given width.'''
-#     n, r = divmod(len(data), cols)
-#     pat = '{{:{}}}'.format(wide)
-#     line = '\n'.join(pat * cols for _ in range(n))
-#     last_line = pat * r
-#     print(line.format(*data))
-#     print(line.format(*data1))
-#     print(last_line.format(*data[n*cols:]))
-# 
-# data = [str(i) for i in range(27)]
-# print_table(data, 6, 12)
-# 
-# 
-# print('%6s%6s'%("as","bs"))
-# print('%6s%6s'%("asass","bsss"))
-# 
-# =============================================================================

@@ -3,7 +3,7 @@ import tensorflow as tf
 
 
 class BaseModel(object):
-    """Generic class for general methods that are not specific to NER"""
+    """Generic class for general methods"""
 
     def __init__(self, config):
         """Defines self.config and self.logger
@@ -27,7 +27,7 @@ class BaseModel(object):
 
 
     def add_train_op(self, lr_method, lr, loss, clip=-1):
-        """Defines self.train_op that performs an update on a batch
+        """perform update on batch
 
         Args:
             lr_method: (string) sgd method, for example "adam"
@@ -50,7 +50,7 @@ class BaseModel(object):
             else:
                 raise NotImplementedError("Unknown method {}".format(_lr_m))
 
-            if clip > 0: # gradient clipping if clip is positive
+            if clip > 0: # clip gradients if it is positive
                 grads, vs     = zip(*optimizer.compute_gradients(loss))
                 grads, gnorm  = tf.clip_by_global_norm(grads, clip)
                 self.train_op = optimizer.apply_gradients(zip(grads, vs))
@@ -59,7 +59,7 @@ class BaseModel(object):
 
 
     def initialize_session(self):
-        """Defines self.sess and initialize the variables"""
+        """intitates session. global_variables, saver"""
         #self.logger.info("Initializing tf session")
         self.sess = tf.Session()
         self.sess.run(tf.global_variables_initializer())
@@ -67,12 +67,7 @@ class BaseModel(object):
 
 
     def restore_session(self, dir_model):
-        """Reload weights into session
-
-        Args:
-            sess: tf.Session()
-            dir_model: dir with weights
-
+        """Reload session from weights
         """
         #self.logger.info("Reloading the latest trained model...")
         self.saver.restore(self.sess, dir_model)
@@ -106,7 +101,7 @@ class BaseModel(object):
         """Performs training with early stopping and lr exponential decay
 
         Args:
-            train: dataset that yields tuple of (sentences, tags)
+            train: dataset generator that yield tuple (sentences, tags)
             dev: dataset
 
         """
@@ -119,7 +114,7 @@ class BaseModel(object):
                         #self.config.nepochs))
 
             score = self.run_epoch(train, dev, epoch)
-            self.config.lr *= self.config.lr_decay # decay learning rate
+            self.config.lr *= self.config.lr_decay # decay learning rate on epochs
 
             # early stopping and saving best parameters
             if score >= best_score:
@@ -137,10 +132,6 @@ class BaseModel(object):
 
     def evaluate(self, test):
         """Evaluate model on test set
-
-        Args:
-            test: instance of class Dataset
-
         """
         #self.logger.info("Testing model over test set")
         metrics = self.run_evaluate(test)

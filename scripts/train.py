@@ -1,13 +1,12 @@
 import os
 import sys
 import json
-
 from data_utils import data_builder, CoNLLDataset
 from BILSTM_CRF_model import BILSTM_CRF
 from config import config
 
 
-def train(config_path,continue_training=False):
+def train(config_path,continue_=False):
     #reading hyperparameters
     config_params = json.load(open(config_path))
     
@@ -23,7 +22,7 @@ def train(config_path,continue_training=False):
     model = BILSTM_CRF(config_train)
     model.build()
     
-    if continue_training:
+    if continue_:
         try:
             model_path = config_params["model_path"]
             print("Loading weights from path:: ",model_path)
