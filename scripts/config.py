@@ -66,8 +66,9 @@ class config():
         #id -- word
         self.word_2_id = load_vocab(self.vocab_filename) 
         self.tag_2_id = load_vocab(self.tag_filename)
-        self.char_2_id = (load_vocab(self.char_filename)if self.use_chars else None)
-        self.nchars = (len(self.char_2_id)if self.use_chars else None)
+        if self.use_chars:
+	        self.char_2_id = load_vocab(self.char_filename)
+	        self.nchars = len(self.char_2_id)
         
         
         #load number of unique words present

@@ -14,12 +14,13 @@ def train(config_path,continue_training=False):
     #loading hyperparams
     config_train = config(**config_params, load=False)
     #Creating data vocab.txt, chars.txt, tags.txt, and embeddings
-    data_builder(config_train)
+    train, test = data_builder(config_train)
     
     #creating loading the data created earlier
-    # config_train = config(**config_params,load=True)
-    config_train.load = True
-    config_train.loads()
+    config_train = config(**config_params,load=True)
+    # config_train.load = True
+    # config_train.loads()
+    # print("yesss....................................")
     
     #build model
     model = BILSTM_CRF(config_train)
@@ -36,14 +37,13 @@ def train(config_path,continue_training=False):
             print("Restoring weights failed")
             print("training from scratch")
             print(e)
-            input()
     
     
     
     #data generators
-    dev   = CoNLLDataset(config_train.train, config_train.process_words,
+    dev   = CoNLLDataset(test, config_train.process_words,
                          config_train.process_tags)
-    train = CoNLLDataset(config_train.test, config_train.process_words,
+    train = CoNLLDataset(train, config_train.process_words,
                          config_train.process_tags)
     
     # train model

@@ -214,8 +214,8 @@ class BILSTM_CRF(BaseModel):
             fd, _ = self.get_feed_dict(words, labels, self.config.lr,
                     self.config.dropout)
 
-            _, train_loss, summary = self.sess.run(
-                    [self.train_op, self.loss, self.merged], feed_dict=fd)
+            _, train_loss= self.sess.run(
+                    [self.train_op, self.loss], feed_dict=fd)
 
 # =============================================================================
 #             # tensorboard

@@ -9,19 +9,20 @@ UNK = "$UNK$"
 NUM = "$NUM$"
 NONE = "O"
 
-def prepare_tag_data(filename):
-    eng_lines = []
-    with open(filename,'r',encoding='utf-8') as f:
-        for line in f:
-            line = line.strip().replace('<s>','').replace('</t>','').split('</s> <t>')
-            line = line[0].strip()
-            line = re.sub('\s+',' ',line)
-            eng_lines.append(line)
-    return eng_lines
+def read_data(filename):
+	data=[]
+	with open(filename,'r',encoding='utf-8') as f:
+		for line in f.readlines():
+			line = line.replace('\n','').strip()
+			data.append(line)
+	# data = random.shuffle(data)	print(data[:10])
+	return data
 
 def tuple_data(words,labels):
     data = [(i,j) for i, j in zip(words,labels)]
     return data
+
+
 
 def get_vocabs(datasets):
     """Building vocabs present in datasets"""
@@ -194,15 +195,17 @@ class CoNLLDataset(object):
         self.length = None
         
     def __iter__(self):
-#         words, tags = [], []
+        words, tags = [], []
+        niter = 0
         for d in self.data:
-            words, tags = [], []
+            # words, tags = [], []
             
-#             if self.max_iter == niter:
-#                 yield words, tags
-#                 words, tags = [], []
-#             else:
-#                 niter+=1
+            if self.max_iter == niter:
+                yield words, tags
+                words, tags = [], []
+                niter = 0
+            else:
+                niter+=1
             word, tag = d[0],d[-1]
 #             print(word),print(tag)
             for word_, tag_ in zip(word,tag):
@@ -212,7 +215,7 @@ class CoNLLDataset(object):
                     tag_ = self.processing_tag(tag_)
                 words += [word_]
                 tags += [tag_]
-            yield words, tags
+        yield words, tags
 
     def __len__(self):
         """Iterates once over the corpus to set and store length"""
@@ -430,21 +433,21 @@ def pad_sequences(sequences, pad_tok, nlevels=1):
 
 def data_builder(config):
     """build all the data files vocab, char, tag, embeddings"""
-    data = prepare_tag_data(config.data_path)
-    train_length = int(0.7*len(data))
-    test_length = len(data)-train_length
+    data = read_data(config.data_path)
+    mark = int(0.7*len(data))
     
-    x, y = generate_data(lines=data[:train_length],max_sents_per_example=6,n_examples=56000,punct=config.punct)
-    x_, y_ = generate_data(lines=data[:test_length],max_sents_per_example=6,n_examples=24000,punct=config.punct)
+    
+    x, y = generate_data(lines=data[:mark],max_sents_per_example=6,n_examples=56000,punct=config.punct)
+    x_, y_ = generate_data(lines=data[mark:],max_sents_per_example=6,n_examples=24000,punct=config.punct)
 
-    config.train = tuple_data(words=x,labels=y)
-    config.test = tuple_data(words=x,labels=y)
+    m_train = tuple_data(words=x,labels=y)
+    m_test = tuple_data(words=x,labels=y)
     
     process_word = get_processing_word(lowercase=True)
     
      # Generators
-    test  = CoNLLDataset(data=config.train, processing_word=process_word)
-    train = CoNLLDataset(data=config.test, processing_word=process_word)
+    test  = CoNLLDataset(data=m_test, processing_word=process_word)
+    train = CoNLLDataset(data=m_train, processing_word=process_word)
     
     # Build Word and Tag vocab
     vocab_words, vocab_tags = get_vocabs([train, test])
@@ -468,7 +471,7 @@ def data_builder(config):
     vocab_chars = get_char_vocab(train)
     build_vocab(vocab_chars, config.char_filename)
 
-
+    return m_train, m_test
 
 
     

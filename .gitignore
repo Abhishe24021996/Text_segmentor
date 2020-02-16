@@ -34,3 +34,5 @@ data_folder.char.txt
 model
 12_02_2020_Data.txt
 resource
+*.txt
+data.txt

@@ -9,5 +9,5 @@
 	"char_hidden_dim":100,
 	"word_dim":100,
 	"char_dim":50,
-	"data_filename":"10_02_2020_OnlySyntax.txt"
+	"data_filename":"data.txt"
 }
