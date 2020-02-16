@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from .base_model import BaseModel
-from .data_utils import minibatches, get_chunks
+from .data_utils import minibatches, get_chunks, pad_sequences
 
 
 class BILSTM_CRF(BaseModel):
@@ -19,7 +19,7 @@ class BILSTM_CRF(BaseModel):
         self.char_id = tf.placeholder(dtype=tf.int32, shape=[None,None,None], name="char_id")
         self.word_lengths = tf.placeholder(dtype=tf.int32, shape=[None,None], name="word_length_placeholder")
 
-    def get_feed_dict(words, labels=None, lr=None, dropout=None):
+    def get_feed_dict(self, words, labels=None, lr=None, dropout=None):
         """Given some data, pad it and build a feed dictionary
         Args:
             words: list of sentences. A sentence is a list of ids of a list of
@@ -57,6 +57,8 @@ class BILSTM_CRF(BaseModel):
 
         if dropout is not None:
             feed[self.dropout] = dropout
+
+        return feed, sequence_lengths
 
         
     def word_embedding_fn(self):
